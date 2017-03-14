@@ -68,77 +68,43 @@ MYTrainingData<-MYtrain[c(MYinput, MYtarget)]
 MYTestingData<-MYtest[c(MYinput, MYtarget)]
 
 
-# Random Forest 
+# Support vector machine. 
 
-# The 'randomForest' package provides the 'randomForest' function.
+# The 'kernlab' package provides the 'ksvm' function.
 
-library(randomForest, quietly=TRUE)
-## randomForest 4.6-12
-## Type rfNews() to see new features/changes/bug fixes.
+library(kernlab, quietly=TRUE)
 ## 
-## Attaching package: 'randomForest'
+## Attaching package: 'kernlab'
 ## 
 ## The following object is masked from 'package:ggplot2':
 ## 
-##     margin
-## 
-## The following object is masked from 'package:dplyr':
-## 
-##     combine
-# Build the Random Forest model.
+##     alpha
+# Build a Support Vector Machine model.
 
 set.seed(crv$seed)
-MYrf randomForest(STATUS ~ .,
-                  data=MYtrain[c(MYinput, MYtarget)],
-                  ntree=500,
-                  mtry=2,
-                  importance=TRUE,
-                  na.action=randomForest::na.roughfix,
-                  replace=FALSE)
+MYksvm ksvm(as.factor(STATUS) ~ .,
+            data=MYtrain[c(MYinput, MYtarget)],
+            kernel="rbfdot",
+            prob.model=TRUE)
 
-# Generate textual output of 'Random Forest' model.
+# Generate a textual view of the SVM model.
 
-MYrf
+MYksvm
+## Support Vector Machine object of class "ksvm" 
 ## 
-## Call:
-##  randomForest(formula = STATUS ~ ., data = MYtrain[c(MYinput,      MYtarget)], ntree = 500, mtry = 2, importance = TRUE, replace = FALSE,      na.action = randomForest::na.roughfix) 
-##                Type of random forest: classification
-##                      Number of trees: 500
-## No. of variables tried at each split: 2
+## SV type: C-svc  (classification) 
+##  parameter : cost C = 1 
 ## 
-##         OOB estimate of  error rate: 1.13%
-## Confusion matrix:
-##            ACTIVE TERMINATED  class.error
-## ACTIVE      43366          3 6.917383e-05
-## TERMINATED    501        822 3.786848e-01
-# The `pROC' package implements various AUC functions.
-
-# Calculate the Area Under the Curve (AUC).
-
-pROC::roc(MYrf$y, as.numeric(MYrf$predicted))
+## Gaussian Radial Basis kernel function. 
+##  Hyperparameter : sigma =  0.365136817631195 
 ## 
-## Call:
-## roc.default(response = MYrf$y, predictor = as.numeric(MYrf$predicted))
+## Number of Support Vectors : 2407 
 ## 
-## Data: as.numeric(MYrf$predicted) in 43369 controls (MYrf$y ACTIVE) < 1323 cases (MYrf$y TERMINATED).
-## Area under the curve: 0.8106
-# Calculate the AUC Confidence Interval.
-
-pROC::ci.auc(MYrf$y, as.numeric(MYrf$predicted))
-## 95% CI: 0.7975-0.8237 (DeLong)
-# List the importance of the variables.
-
-rn round(randomForest::importance(MYrf), 2)
-rn[order(rn[,3], decreasing=TRUE),]
-##                   ACTIVE TERMINATED MeanDecreaseAccuracy MeanDecreaseGini
-## age                36.51     139.70                52.45           743.27
-## STATUS_YEAR        35.46      34.13                41.50            64.65
-## gender_full        28.02      40.03                37.08            76.80
-## length_of_service  18.37      18.43                21.38            91.71
-## BUSINESS_UNIT       6.06       7.64                 8.09             3.58
-# Time taken: 18.66 secs
-
-MYpr predict(MYrf, newdata=na.omit(MYtest[c(MYinput, MYtarget)]))
+## Objective Function Value : -2004.306 
+## Training error : 0.017811 
+## Probability model included.
+# Time taken: 42.91 secs
+MYpr predict(MYksvm, newdata=na.omit(MYtest[c(MYinput, MYtarget)]))
 
 # Generate the confusion matrix showing counts.
 
@@ -147,7 +113,7 @@ table(na.omit(MYtest[c(MYinput, MYtarget])]$STATUS, MYpr,
 ##             Predicted
 ## Actual       ACTIVE TERMINATED
 ##   ACTIVE       4799          0
-##   TERMINATED     99         63
+##   TERMINATED    150         12
 # Generate the confusion matrix showing proportions.
 
 pcme table(actual, cl)
@@ -162,13 +128,14 @@ per pcme(MYtest[c(MYinput, MYtarget)]$STATUS, MYpr)
 round(per, 2)
 ##             Predicted
 ## Actual       ACTIVE TERMINATED Error
-##   ACTIVE       0.97       0.00  0.00
-##   TERMINATED   0.02       0.01  0.61
+##   ACTIVE       0.97          0  0.00
+##   TERMINATED   0.03          0  0.93
 # Calculate the overall error percentage.
 
 cat(100*round(1-sum(diag(per), na.rm=TRUE), 2))
-## 2
+## 3
 # Calculate the averaged class error percentage.
 
 cat(100*round(mean(per[,"Error"], na.rm=TRUE), 2))
-## 30
+## 46
+
